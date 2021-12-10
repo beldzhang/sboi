@@ -43,9 +43,9 @@ begin
     sector := stream.Size div 512;
     fpSend(cskt, @sector, 4, 0);
     while True do begin
-      if fpRecv(cskt, @write,  1, 0) <> 1 then Break;
-      if fpRecv(cskt, @sector, 4, 0) <> 4 then Break;
-      if fpRecv(cskt, @count,  2, 0) <> 2 then Break;
+      if fpRecv(cskt, @write,  1, MSG_WAITALL) <> 1 then Break;
+      if fpRecv(cskt, @sector, 4, MSG_WAITALL) <> 4 then Break;
+      if fpRecv(cskt, @count,  2, MSG_WAITALL) <> 2 then Break;
 
       stream.Position := Int64(sector) * 512;
       len := count * 512;
@@ -56,14 +56,14 @@ begin
           writeln('fpSend()');
       end
       else begin
+        //writeln(format('%2d: %8d, %4d', [write, sector, count]));
         c := 0;
         while len > 0 do begin
-          r := fpRecv(cskt, @buffer[c], len, 0);
+          r := fpRecv(cskt, @buffer[c], len, MSG_WAITALL);
           Inc(c, r);
           Dec(len, r);
         end;
         stream.Write(buffer, c);
-        //writeln(format('%2d: %8d, %4d', [write, sector, c]));
       end;
     end;
     writeln('client closed');

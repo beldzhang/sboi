@@ -1,0 +1,29 @@
+#!/bin/busybox sh
+
+SERVER=10.10.1.210
+PORT=12345
+
+busybox mkdir -p bin sbin etc proc sys mnt usr/bin usr/sbin
+busybox mount -t devtmpfs none dev
+busybox mount -t proc none proc
+busybox mount -t sysfs none sys
+busybox --install -s
+ifconfig lo 127.0.0.1
+
+#
+# static network setting
+#
+ifconfig eth0 10.10.11.123 netmask 255.255.0.0
+
+#
+# set by DHCP
+#
+#ifconfig eth0 up
+#udhcpc -q
+
+modprobe sboi addr=$SERVER port=$PORT
+mount /dev/sboi /mnt
+umount /sys /dev /proc
+exec switch_root /mnt /sbin/init
+
+/bin/sh

@@ -10,6 +10,7 @@
 #include <linux/blk-mq.h>
 #include <net/tcp.h>
 #include <linux/hdreg.h>
+#include <linux/reboot.h>
 #include <linux/inet.h>
 #include <linux/kthread.h>
 #include <linux/sched/mm.h>
@@ -239,10 +240,26 @@ static void sboi_close_net(void)
 	free_sock();
 }
 
+static int sboi_notify_reboot(struct notifier_block *this, unsigned long code, void *x)
+{
+	if ((code == SYS_DOWN) || (code == SYS_HALT) || (code == SYS_POWER_OFF))
+	{
+		sboi_close_net();
+	}
+	return NOTIFY_OK;
+}
+
 static struct block_device_operations sboi_fops =
 {
 	.owner = THIS_MODULE,
 	.ioctl = sboi_ioctl,
+};
+
+static struct notifier_block sboi_reboot_notifier =
+{
+	.notifier_call = sboi_notify_reboot,
+	.next          = NULL,
+	.priority      = 0,
 };
 
 static const struct blk_mq_ops sboi_mq_ops = {
@@ -294,6 +311,7 @@ static int __init sboi_init(void)
 
 	add_disk(sboi_disk);
 
+	register_reboot_notifier(&sboi_reboot_notifier);
 	return 0;
 }
 
@@ -308,6 +326,7 @@ static void __exit sboi_cleanup(void)
 	}
 
 	sboi_close_net();
+	unregister_reboot_notifier(&sboi_reboot_notifier);
 	unregister_blkdev(sboi_major, SBOI_NAME);
 	printk(SBOI_INFO "unloaded.\n");
 }
