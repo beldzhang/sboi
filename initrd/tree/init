@@ -8,22 +8,39 @@ busybox mount -t devtmpfs none dev
 busybox mount -t proc none proc
 busybox mount -t sysfs none sys
 busybox --install -s
+echo "::SBOI 0.01.0001"
 ifconfig lo 127.0.0.1
 
 #
 # static network setting
 #
-ifconfig eth0 10.10.11.123 netmask 255.255.0.0
+#ifconfig eth0 10.10.11.123 netmask 255.255.0.0
 
 #
 # set by DHCP
 #
-#ifconfig eth0 up
-#udhcpc -q
+ifconfig eth0 up
+udhcpc -q
 
+read -p "Press <SPACE> to break..." -t 3 -n 1
+if [ $? = 0 ]; then
+	/bin/sh
+fi
+echo
+echo "::Connect server"
 modprobe sboi addr=$SERVER port=$PORT
-mount /dev/sboi /mnt
-umount /sys /dev /proc
-exec switch_root /mnt /sbin/init
-
+if ! mount /dev/sboi /mnt/sboi; then
+	rmmod sboi
+fi
+if mountpoint -q /mnt/sboi; then
+	mount -t tmpfs none /mnt/overlay
+	mkdir -p /mnt/overlay/upper /mnt/overlay/work
+	modprobe overlay
+	mount -t overlay -o lowerdir=/mnt/sboi,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/work none /mnt/root
+	if mountpoint -q /mnt/root; then
+		echo "::Boot to full system"
+		umount /sys /dev /proc
+		exec switch_root /mnt/root /sbin/init
+	fi
+fi
 /bin/sh
