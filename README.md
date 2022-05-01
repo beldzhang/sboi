@@ -16,7 +16,7 @@ __3) connect, mkfs, mount, copy root-fs, disconnect__
     [#] modprobe sboi addr=<server-ip> port=12345
     [#] mkfs.ext4 /dev/sboi
     [#] mkdir -p /tmp/remote
-    [#] mount /dev/sboi /tmp/remote
+    [#] mount /dev/sboi0 /tmp/remote  # _changed to /dev/sboi0 from /devsboi_
     [#] rsync -avx / /tmp/remote
     [#] vim /tmp/remote/etc/fstab  # _change mount point(/) to "/dev/sboi" in /etc/fstab_
     [#] rmmod sboi

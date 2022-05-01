@@ -12,6 +12,7 @@ modules clean:
 install:
 	mkdir -p /lib/modules/$(shell uname -r)/kernel/updates
 	cp -a $(driver).ko /lib/modules/$(shell uname -r)/kernel/updates
+	depmod
 
 up:
 	insmod $(driver).ko addr=10.10.1.210 port=12345

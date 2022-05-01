@@ -8,7 +8,7 @@ busybox mount -t devtmpfs none dev
 busybox mount -t proc none proc
 busybox mount -t sysfs none sys
 busybox --install -s
-echo "::SBOI 0.01.0001"
+echo "::SBOI 0.02.0001"
 ifconfig lo 127.0.0.1
 
 #
@@ -20,7 +20,7 @@ ifconfig lo 127.0.0.1
 # set by DHCP
 #
 ifconfig eth0 up
-udhcpc -q
+udhcpc -q -t 8 -n
 
 read -p "Press <SPACE> to break..." -t 3 -n 1
 if [ $? = 0 ]; then
@@ -29,7 +29,7 @@ fi
 echo
 echo "::Connect server"
 modprobe sboi addr=$SERVER port=$PORT
-if ! mount /dev/sboi /mnt/sboi; then
+if ! mount -r /dev/sboi0 /mnt/sboi; then
 	rmmod sboi
 fi
 if mountpoint -q /mnt/sboi; then
