@@ -1,0 +1,21 @@
+bin-aarch64
+├── etc
+│   ├── ld.so.conf
+│   └── ld.so.conf.d
+│       └── aarch64-linux-gnu.conf
+└── usr
+    ├── lib
+    │   ├── aarch64-linux-gnu
+    │   │   ├── ld-2.31.so
+    │   │   ├── libc-2.31.so
+    │   │   ├── libcrypto.so.1.1
+    │   │   ├── libdl-2.31.so
+    │   │   ├── libkmod.so.2.3.6
+    │   │   ├── liblzma.so.5.2.5
+    │   │   ├── libopeniscsiusr.so.0.2.0
+    │   │   └── libpthread-2.31.so
+    │   └── ld-linux-aarch64.so.1 -> aarch64-linux-gnu/ld-2.31.so
+    └── sbin
+        └── iscsistart
+
+6 directories, 12 files

@@ -1,0 +1,45 @@
+#!/bin/busybox sh
+
+NBD=/dev/nbd0
+
+busybox mkdir -p bin sbin etc proc sys var mnt/root usr/bin usr/sbin
+busybox mount -t devtmpfs none dev
+busybox mount -t proc none proc
+busybox mount -t sysfs none sys
+busybox --install -s
+echo "::nBoot-rpi(nbd) 0.01.0001"
+ifconfig lo 127.0.0.1
+
+#
+# static network setting
+#
+#ifconfig eth0 10.10.11.123 netmask 255.255.0.0
+#SERVER=10.10.1.210
+
+#
+# set by DHCP
+#
+ifconfig eth0 up
+udhcpc -q -t 8 -n
+
+read -p "Press <SPACE> to break..." -t 3 -n 1
+if [ $? = 0 ]; then
+	/bin/sh
+fi
+
+if [ -f /var/dhcp.info ]; then
+	source /var/dhcp.info
+	SERVER=${DHCP_SERVER}
+fi
+echo
+echo "::Connect server: ${SERVER}"
+modprobe nbd
+if nbd-client -p ${SERVER} $NBD -N default; then
+	if mount -r $NBD /mnt/root; then
+		echo "::Boot to full system"
+		umount /sys /dev /proc
+		exec switch_root /mnt/root /sbin/init
+	fi
+fi
+
+/bin/sh
