@@ -1,0 +1,20 @@
+
+build()
+{
+	add_module sboi
+	add_checked_modules "/drivers/net"
+	add_binary "/etc/initcpio/sboi-udhcpc" "/usr/share/udhcpc/default.script"
+	add_binary "nameif"
+	add_runscript
+}
+
+help()
+{
+cat <<EOF
+
+	This is sboi(simple blockdev over ip) hook for archlinux.
+	- Run diskless clients
+
+EOF
+
+}

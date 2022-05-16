@@ -1,0 +1,32 @@
+
+run_hook()
+{
+	echo "::SBOI 0.02.0002"
+	nameif netboot `cat /sys/class/net/eth0/address`
+	udhcpc -i netboot -q -t 4 -n
+	if [ -f /dhcp.info ]; then
+		source /dhcp.info
+		protocol=`echo $ROOT_PATH | cut -f1 -d/`
+		if [ "$protocol" = "sboi:" ]; then
+			serve=`echo $ROOT_PATH | cut -f3 -d/`
+			SADDR=`echo $serve | cut -f1 -d:`
+			SPORT=`echo $serve | cut -f2 -d:`
+		fi
+	fi
+	read -p "Press <SPACE> to break..." -t 3 -n 1
+	if [ $? = 0 ]; then
+		launch_interactive_shell
+	fi
+
+	echo
+	echo -n "::Connect server ${SADDR}:${SPORT} ... "
+	modprobe sboi addr=${SADDR} port=${SPORT} 2> /tmp/err.log
+	if [ $? = 0 ]; then
+		echo "Ok"
+		root=/dev/sboi0
+	else
+		echo "Fail"
+		echo "  -> `cat /tmp/err.log`"
+		launch_interactive_shell
+	fi
+}

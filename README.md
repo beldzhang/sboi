@@ -14,11 +14,12 @@ __2) build and install module__
 __3) connect, mkfs, mount, copy root-fs, disconnect__
 
     [#] modprobe sboi addr=<server-ip> port=12345
-    [#] mkfs.ext4 /dev/sboi
+    [#] mkfs.ext4 /dev/sboi0
     [#] mkdir -p /tmp/remote
     [#] mount /dev/sboi0 /tmp/remote  # _changed to /dev/sboi0 from /devsboi_
     [#] rsync -avx / /tmp/remote
-    [#] vim /tmp/remote/etc/fstab  # _change mount point(/) to "/dev/sboi" in /etc/fstab_
+    [#] vim /tmp/remote/etc/fstab  # _change mount point(/) to "/dev/sboi0"_
+                                   # _remove other local device mountpoints_
     [#] rmmod sboi
 
 __4) build initramfs__
@@ -28,21 +29,33 @@ __4) build initramfs__
 
   4.2) edit param in initrd/tree/init, use `static ip` or `dhcp`
 
-  4.3) build
+  4.3) build rpios:
 
     [#] cd initrd && make
 
+  4.4) build arch:
+    [#] cd initrd && make arch
+
 __5) boot from sd card, rootfs on sboi__
 
-  5.1) copy initrd/initrd.xz to /boot
+  5.1) rpios: copy initrd/initrd.xz to /boot
+       arch:  copy initrd-sboi.img to /boot
 
-  5.2) edit /boot/config.txt, add
+  5.2) edit /boot/config.txt
 
-    initramfs initrd.xz followkernel
+    rpios: add
+      `initramfs initrd.xz followkernel`
+    arch: change
+      `initramfs initramfs-linux.img followkernel`
+      to
+      `initramfs initrd-sboi.img followkernel`
 
   5.3) reboot
 
 __6) prepare dhcp, dnsmasq, tftp, rpi pxeboot__
+
+  __DHCP root-path config__
+    add `root-path sboi://<server-ip>:<server-port>`, allow client get info dynamically
 
   put all boot files to server.
   excellent guides:

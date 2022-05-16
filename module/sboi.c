@@ -19,7 +19,7 @@
 
 #define SBOI_NAME     "sboi"
 #define SBOI_DESC     "simple blockdev over ip"
-#define SBOI_VERSION  "0.02.0001"
+#define SBOI_VERSION  "0.02.0002"
 
 #define SOCKET_RECV 0
 #define SOCKET_SEND 1
@@ -260,6 +260,7 @@ static int sboi_connect(void)
 
 	open_cmd.magic = SBOI_MAGIC;
 	open_cmd.cmmd  = SBOI_CMD_OPEN;
+	open_cmd.index = __disk_count;
 	open_cmd.length = open ? strlen(open) : 0;
 	rc = sboi_sock_xmit(tmp_sock, SOCKET_SEND, &open_cmd, sizeof(open_cmd), 0);
 	if (rc != sizeof(open_cmd)) {
@@ -293,12 +294,28 @@ static int sboi_connect(void)
 		goto error;
 	}
 
-	__disk_count = open_rsp.index;
-	for (i = 0; i < __disk_count; i++) {
-		__disks[i].index = i;
-		__disks[i].type = disk_info[i].type;
-		__disks[i].flag = disk_info[i].flag;
-		__disks[i].size = disk_info[i].size;
+	if (!__disk_count) {
+		__disk_count = open_rsp.index;
+		for (i = 0; i < __disk_count; i++) {
+			__disks[i].index = i;
+			__disks[i].type = disk_info[i].type;
+			__disks[i].flag = disk_info[i].flag;
+			__disks[i].size = disk_info[i].size;
+		}
+	}
+	else {
+		if (__disk_count != open_rsp.index) {
+			printk(SBOI_ERROR "disk count mismatch: %d <> %d\n", __disk_count, open_rsp.index);
+			rc = -201;
+			goto error;
+		}
+		for (i = 0; i < __disk_count; i++) {
+			if (__disks[i].size != disk_info[i].size) {
+				printk(SBOI_ERROR "disk size[%d] mismatch: %lld <> %lld\n", i, __disks[i].size, disk_info[i].size);
+				rc = -202;
+				goto error;
+			}
+		}
 	}
 
 	sboi_skt = tmp_sock;
@@ -316,6 +333,16 @@ error2:
 	return rc;
 }
 
+static void sboi_reconnect(void)
+{
+	while(1) {
+		free_sock();
+		msleep(1000);
+		printk(SBOI_INFO "reconnect...\n");
+		if (sboi_connect() == 0)
+			break;
+	}
+}
 
 static blk_status_t do_sboi_rq(struct blk_mq_hw_ctx *hctx, const struct blk_mq_queue_data *bd)
 {
@@ -324,7 +351,12 @@ static blk_status_t do_sboi_rq(struct blk_mq_hw_ctx *hctx, const struct blk_mq_q
 
 	blk_mq_start_request(req);
 	mutex_lock(&skt_mutex);
-	sboi_xfer_request(req);
+	while(1) {
+		if (sboi_xfer_request(req) > 0)
+			break;
+		else
+			sboi_reconnect();
+	}
 	mutex_unlock(&skt_mutex);
 	spin_lock_irqsave(&req->q->queue_lock, flags);
 	blk_mq_end_request(req, 0);

@@ -3,12 +3,12 @@
 SERVER=10.10.1.210
 PORT=12345
 
-busybox mkdir -p bin sbin etc proc sys mnt usr/bin usr/sbin
+busybox mkdir -p bin sbin etc proc sys mnt usr/bin usr/sbin tmp
 busybox mount -t devtmpfs none dev
 busybox mount -t proc none proc
 busybox mount -t sysfs none sys
 busybox --install -s
-echo "::SBOI 0.02.0001"
+echo "::SBOI 0.02.0002"
 ifconfig lo 127.0.0.1
 
 #
@@ -19,28 +19,57 @@ ifconfig lo 127.0.0.1
 #
 # set by DHCP
 #
-ifconfig eth0 up
-udhcpc -q -t 8 -n
+nameif netboot `cat /sys/class/net/eth0/address`
+udhcpc -i netboot -q -t 4 -n
+
+if [ -f /dhcp.info ]; then
+	source /dhcp.info
+	protocol=`echo $ROOT_PATH | cut -f1 -d/`
+	if [ "$protocol" = "sboi:" ]; then
+		serve=`echo $ROOT_PATH | cut -f3 -d/`
+		SADDR=`echo $serve | cut -f1 -d:`
+		SPORT=`echo $serve | cut -f2 -d:`
+	else
+		echo " !! protocol not found: ${protocol:-<empty>}"
+	fi
+fi
 
 read -p "Press <SPACE> to break..." -t 3 -n 1
 if [ $? = 0 ]; then
 	/bin/sh
 fi
+
 echo
-echo "::Connect server"
-modprobe sboi addr=$SERVER port=$PORT
-if ! mount -r /dev/sboi0 /mnt/sboi; then
-	rmmod sboi
+echo -n "::Connect server ... "
+if modprobe sboi addr=${SADDR:-$SERVER} port=${SPORT:-$PORT} 2> /tmp/module-fail.log; then
+	echo 'Ok'
+	if [ -n "$SADDR" ]; then
+		if ! mount /dev/sboi0 /mnt/root; then
+			rmmod sboi
+		fi
+	else
+		if mount -r /dev/sboi0 /mnt/sboi; then
+			mount -t tmpfs none /mnt/overlay
+			mkdir -p /mnt/overlay/upper /mnt/overlay/work
+			modprobe overlay
+			mount -t overlay -o lowerdir=/mnt/sboi,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/work none /mnt/root
+		else
+			rmmod sboi
+		fi
+	fi
+else
+	echo 'Fail'
+	echo " !! `cat /tmp/module-fail.log`"
 fi
-if mountpoint -q /mnt/sboi; then
-	mount -t tmpfs none /mnt/overlay
-	mkdir -p /mnt/overlay/upper /mnt/overlay/work
-	modprobe overlay
-	mount -t overlay -o lowerdir=/mnt/sboi,upperdir=/mnt/overlay/upper,workdir=/mnt/overlay/work none /mnt/root
-	if mountpoint -q /mnt/root; then
-		echo "::Boot to full system"
+
+while true; do
+	if test -f /mnt/root/sbin/init -o -L /mnt/root/sbin/init; then
+		echo "::Boot to full system ..."
 		umount /sys /dev /proc
 		exec switch_root /mnt/root /sbin/init
+	else
+		echo " !! BAD ROOT FILESYSTEM TO SWITCH."
 	fi
-fi
-/bin/sh
+
+	/bin/sh
+done

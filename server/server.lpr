@@ -213,7 +213,7 @@ begin
 end;
 
 begin
-  writeln('sboi server 0.02.0001');
+  writeln('sboi server 0.02.0002');
 
   sskt := fpSocket(AF_INET, SOCK_STREAM, 0);
 
