@@ -19,7 +19,7 @@
 
 #define SBOI_NAME     "sboi"
 #define SBOI_DESC     "simple blockdev over ip"
-#define SBOI_VERSION  "0.02.0002"
+#define SBOI_VERSION  "0.02.0003"
 
 #define SOCKET_RECV 0
 #define SOCKET_SEND 1
@@ -222,9 +222,10 @@ static int sboi_xfer_request(struct request *req)
 	return nsect;
 }
 
-static void conn_err(int step, int err)
+static int conn_err(int step, int err)
 {
 	printk(SBOI_ERROR "conn fail <%d, %d>\n", step, err);
+	return err;
 }
 
 static int sboi_connect(void)
@@ -282,15 +283,19 @@ static int sboi_connect(void)
 	}
 
 	if (open_rsp.magic != SBOI_MAGIC || open_rsp.cmmd != SBOI_RSP_OPEN) {
+		rc = conn_err(5, -400);
+		goto error;
 	}
-	if (open_rsp.index > SBOI_MAX ||
+	if (open_rsp.index == 0 || open_rsp.index > SBOI_MAX ||
 	    open_rsp.length < sizeof(struct sboi_pdu_disk) * open_rsp.index ||
 	    open_rsp.length > sizeof(struct sboi_pdu_disk) * SBOI_MAX) {
+		rc = conn_err(5, -404);
+		goto error;
 	}
 
 	rc = sboi_sock_xmit(tmp_sock, SOCKET_RECV, disk_info, open_rsp.length, 0);
 	if (rc != open_rsp.length) {
-		conn_err(5, rc);
+		conn_err(11, rc);
 		goto error;
 	}
 
@@ -306,13 +311,13 @@ static int sboi_connect(void)
 	else {
 		if (__disk_count != open_rsp.index) {
 			printk(SBOI_ERROR "disk count mismatch: %d <> %d\n", __disk_count, open_rsp.index);
-			rc = -201;
+			rc = -409;
 			goto error;
 		}
 		for (i = 0; i < __disk_count; i++) {
 			if (__disks[i].size != disk_info[i].size) {
 				printk(SBOI_ERROR "disk size[%d] mismatch: %lld <> %lld\n", i, __disks[i].size, disk_info[i].size);
-				rc = -202;
+				rc = -409;
 				goto error;
 			}
 		}

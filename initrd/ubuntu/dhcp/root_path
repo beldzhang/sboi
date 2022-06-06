@@ -1,0 +1,6 @@
+
+
+#set > /tmp/dhcp-ck.log
+
+echo ROOT_PATH=\"$new_root_path\" > /dhcp.info
+echo DHCP_SERVER=\"$new_dhcp_server_identifier\" >> /dhcp.info

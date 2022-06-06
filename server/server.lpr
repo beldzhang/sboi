@@ -70,6 +70,7 @@ var
   sskt, cskt: TSocket;
   inaddr: TInetSockAddr;
   len: Integer;
+  image: string;
 
 { TClientThread }
 
@@ -174,10 +175,10 @@ var
   r: Integer;
 begin
   writeln(format('client open.: %s', [NetAddrToStr(FAddr.sin_addr)]));
-  if FileExists('/tmp/rootfs.img') then
-    FStream := TFileStream.Create('/tmp/rootfs.img', fmOpenReadWrite or fmShareDenyNone)
+  if FileExists(image) then
+    FStream := TFileStream.Create(image, fmOpenReadWrite or fmShareDenyNone)
   else begin
-    FStream := TFileStream.Create('/tmp/rootfs.img', fmCreate);
+    FStream := TFileStream.Create(image, fmCreate);
     FStream.Size := Int64(1024 * 1024 * 1024) * 8;
   end;
 
@@ -212,8 +213,36 @@ begin
   CloseSocket(cskt);
 end;
 
+
+function find_parm(const key: string): string;
+var
+  i: Integer;
+  s: string;
 begin
-  writeln('sboi server 0.02.0002');
+  for i := 1 to ParamCount do begin
+    s := ParamStr(i);
+    if Pos(key + '=', s) = 1 then begin
+      Result := Copy(s, Length(key) + 2, Length(s));
+      Exit;
+    end;
+  end;
+  Result := '';
+end;
+
+begin
+  writeln('sboi server 0.02.0003');
+
+  image := find_parm('image');
+  if image <> '' then begin
+    if not FileExists(image) then begin
+      writeln(format(' !! NOT EXISTS: "%s"', [image]));
+      Exit;
+    end;
+  end
+  else begin
+    image := '/tmp/rootfs.img';
+  end;
+  writeln(format(' -> IMAGE: "%s"', [image]));
 
   sskt := fpSocket(AF_INET, SOCK_STREAM, 0);
 

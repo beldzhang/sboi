@@ -1,7 +1,7 @@
 
 run_hook()
 {
-	echo "::SBOI 0.02.0002"
+	echo "::SBOI 0.02.0003"
 	nameif netboot `cat /sys/class/net/eth0/address`
 	udhcpc -i netboot -q -t 4 -n
 	if [ -f /dhcp.info ]; then

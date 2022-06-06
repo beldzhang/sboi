@@ -3,7 +3,7 @@ build()
 {
 	add_module sboi
 	add_checked_modules "/drivers/net"
-	add_binary "/etc/initcpio/sboi-udhcpc" "/usr/share/udhcpc/default.script"
+	add_binary "archlinux/etc/initcpio/sboi-udhcpc" "/usr/share/udhcpc/default.script"
 	add_binary "nameif"
 	add_runscript
 }

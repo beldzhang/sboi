@@ -1,0 +1,55 @@
+
+#echo " ++ BOOT::SBOI"
+
+mountroot()
+{
+	echo "::SBOI 0.02.0003"
+	nameif netboot `cat /sys/class/net/eth0/address`
+	if type -p dhclient > /dev/null; then
+		dhclient -4 netboot
+	elif type -p udhcpc > /dev/null; then
+		udhcpc -i netboot -q -t 4 -n
+	else
+		echo " !! dhcp client not found"
+		/bin/sh
+	fi
+
+	if [ -f /dhcp.info ]; then
+		. /dhcp.info
+		protocol=`echo $ROOT_PATH | cut -f1 -d:`
+		if [ "$protocol" = "sboi" ]; then
+			serve=`echo $ROOT_PATH | cut -f3 -d/`
+			SADDR=`echo $serve | cut -f1 -d:`
+			SPORT=`echo $serve | cut -f2 -d:`
+		else
+			echo " !! protocol not found: ${protocol:-<empty>}"
+		fi
+	else
+		echo " !! server info not found"
+		/bin/sh
+	fi
+
+	echo -n "::Connect server ... "
+	if modprobe sboi addr=${SADDR} port=${SPORT} 2> /tmp/module-fail.log; then
+		echo 'Ok'
+		if ! mount /dev/sboi0 ${rootmnt}; then
+			rmmod sboi
+		fi
+	else
+		echo 'Fail'
+		echo " !! `cat /tmp/module-fail.log`"
+	fi
+
+read -p "Press <SPACE> to break..." -t 3 -n 1
+if [ $? = 0 ]; then
+	/bin/sh
+fi
+echo
+
+	if test -f ${rootmnt}/sbin/init -o -L ${rootmnt}/sbin/init; then
+		echo "::Ready boot to full system ..."
+	else
+		echo " !! BAD ROOT FILESYSTEM TO SWITCH."
+		/bin/sh
+	fi
+}

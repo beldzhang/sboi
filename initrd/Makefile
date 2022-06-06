@@ -1,6 +1,6 @@
 
 
-all:
+rpios:
 	cd ../module && make modules
 	test -f tree/bin/busybox
 	test -f ../module/sboi.ko
@@ -20,6 +20,46 @@ all:
 
 
 arch:
-	cp -auv archlinux/* /
-	chmod +x /etc/initcpio/sboi-udhcpc
-	mkinitcpio -A sboi -g initrd-arch.img
+	modinfo sboi > /dev/null
+	which nameif > /dev/null   # package: net-tools
+	chmod +x archlinux/etc/initcpio/sboi-udhcpc
+	mkinitcpio -D /usr/lib/initcpio -D archlinux/etc/initcpio -A sboi -g initramfs-linux.img
+
+
+.PHONY: ubuntu
+
+ubuntu:
+	modinfo sboi > /dev/null
+	which nameif > /dev/null   # package: net-tools
+	chmod +x ubuntu/hooks/sboi
+	mkinitramfs -d ubuntu -o initrd.img
+
+
+FWDIR  ?= $(shell grep ^/dev/mmcblk0p1 /proc/mounts | awk '{print $$2}')
+PKGVER ?= $(shell . /etc/os-release; echo "$$ID-$${VERSION_ID:-rolling}" )
+INITRD ?= $(shell ls initrd.xz initr*.img 2> /dev/null )
+
+bootpkg:
+	test -n "$(FWDIR)"
+#	test `ls initr*.img | wc -l` -eq 1
+	test `echo $(INITRD) | wc -w` -eq 1
+	mkdir -p .tmpfs-pkg
+	mount -t tmpfs none .tmpfs-pkg
+	mkdir -p .tmpfs-pkg/boot
+	cp -a $(FWDIR)/* .tmpfs-pkg/boot
+	find .tmpfs-pkg/boot -name '*.bak' -exec rm {} +
+	cat /etc/os-release > .tmpfs-pkg/boot/os-release
+	if ! modinfo sboi > .tmpfs-pkg/boot/modinfo-sboi; then \
+		modinfo ../module/sboi.ko > .tmpfs-pkg/boot/modinfo-sboi; \
+	fi
+	uname -m     > .tmpfs-pkg/boot/modinfo-arch
+	cp -av $(INITRD) .tmpfs-pkg/boot
+	if [ -z "`grep ^initramfs .tmpfs-pkg/boot/config.txt`" ]; then \
+		echo "initramfs $(INITRD) followkernel" >> .tmpfs-pkg/boot/config.txt; \
+	fi
+	cd .tmpfs-pkg && tar cf ../bootpkg-$(PKGVER).tar boot
+	umount .tmpfs-pkg
+
+
+clean:
+	rm -fv initrd.xz initr*.img bootpkg-*.tar

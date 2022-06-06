@@ -1,0 +1,15 @@
+
+#echo " ++ HOOK::SBOI"
+
+. /usr/share/initramfs-tools/hook-functions
+
+copy_exec /usr/sbin/nameif
+
+DHCP_DIR=/etc/dhcp/dhclient-enter-hooks.d
+mkdir -p $DESTDIR/$DHCP_DIR
+cp -a $CONFDIR/dhcp/root_path $DESTDIR/$DHCP_DIR
+chmod +x $DESTDIR/$DHCP_DIR/root_path
+
+mkdir -p $DESTDIR/etc/udhcpc
+cp -a $CONFDIR/dhcp/sboi-udhcpc $DESTDIR/etc/udhcpc/default.script
+chmod +x $DESTDIR/etc/udhcpc/default.script

@@ -8,7 +8,7 @@ busybox mount -t devtmpfs none dev
 busybox mount -t proc none proc
 busybox mount -t sysfs none sys
 busybox --install -s
-echo "::SBOI 0.02.0002"
+echo "::SBOI 0.02.0003"
 ifconfig lo 127.0.0.1
 
 #
